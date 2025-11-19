@@ -1,5 +1,5 @@
 import React from 'react';
-import { ComplianceReport, InventorySKU } from '../types';
+import { ComplianceReport, InventorySKU, GoogleUser } from '../types';
 import { Button } from './Button';
 
 interface CompliancePanelProps {
@@ -8,6 +8,8 @@ interface CompliancePanelProps {
   isScanning: boolean;
   onScan: () => void;
   hasImage: boolean;
+  onExportSheets: () => void;
+  user: GoogleUser | null;
 }
 
 export const CompliancePanel: React.FC<CompliancePanelProps> = ({ 
@@ -15,7 +17,9 @@ export const CompliancePanel: React.FC<CompliancePanelProps> = ({
   sku, 
   isScanning, 
   onScan,
-  hasImage
+  hasImage,
+  onExportSheets,
+  user
 }) => {
   
   if (!hasImage) {
@@ -64,16 +68,31 @@ export const CompliancePanel: React.FC<CompliancePanelProps> = ({
           <h3 className="text-lg font-bold text-white">Compliance Report</h3>
           <p className="text-xs text-gray-400">Regulated by: <span className="text-gray-200">{report?.regulatoryBody}</span></p>
         </div>
-        <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${
-          report?.score && report.score > 85 ? 'bg-green-900/20 border-green-800 text-green-400' : 
-          report?.score && report.score > 50 ? 'bg-yellow-900/20 border-yellow-800 text-yellow-400' : 
-          'bg-red-900/20 border-red-800 text-red-400'
-        }`}>
-          <span className="text-2xl font-bold">{report?.score}</span>
-          <div className="text-xs leading-tight">
-            <div className="font-bold uppercase">Safety Score</div>
-            <div>{report?.status}</div>
-          </div>
+        <div className="flex items-center gap-4">
+            {/* Google Sheets Export Button */}
+            <button 
+              onClick={onExportSheets}
+              disabled={!user}
+              title={!user ? "Sign in with Google first" : "Export to Sheets"}
+              className="flex items-center gap-2 text-sm font-medium text-green-400 hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                 <path d="M19,3H5C3.9,3,3,3.9,3,5v14c0,1.1,0.9,2,2,2h14c1.1,0,2-0.9,2-2V5C21,3.9,20.1,3,19,3z M19,19H5V5h14V19z M11,7h2v2h-2V7z M11,11h2v2h-2V11z M11,15h2v2h-2V15z M7,7h2v2H7V7z M7,11h2v2H7V11z M7,15h2v2H7V15z M15,7h2v2h-2V7z M15,11h2v2h-2V11z M15,15h2v2h-2V15z"/>
+               </svg>
+               Export to Sheets
+            </button>
+
+            <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${
+            report?.score && report.score > 85 ? 'bg-green-900/20 border-green-800 text-green-400' : 
+            report?.score && report.score > 50 ? 'bg-yellow-900/20 border-yellow-800 text-yellow-400' : 
+            'bg-red-900/20 border-red-800 text-red-400'
+            }`}>
+            <span className="text-2xl font-bold">{report?.score}</span>
+            <div className="text-xs leading-tight">
+                <div className="font-bold uppercase">Safety Score</div>
+                <div>{report?.status}</div>
+            </div>
+            </div>
         </div>
       </div>
 

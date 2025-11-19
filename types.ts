@@ -87,6 +87,17 @@ export interface RegulatoryEntity {
   restrictedTerms: string[];
 }
 
+export type EditorTool = 'brush' | 'text' | 'eraser';
+
+// --- Google Integration ---
+export interface GoogleUser {
+  id: string;
+  name: string;
+  email: string;
+  picture: string;
+  accessToken?: string;
+}
+
 // Declare globals from CDN scripts
 declare global {
   var ImageTracer: {
@@ -97,4 +108,6 @@ declare global {
     ) => void;
   };
   var JSZip: any;
+  var google: any;
+  var gapi: any;
 }

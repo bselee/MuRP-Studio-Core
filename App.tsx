@@ -4,12 +4,13 @@ import { Button } from './components/Button';
 import { FileManager } from './components/FileManager';
 import { CompliancePanel } from './components/CompliancePanel';
 import { TechSheet } from './components/TechSheet';
-import { ImageState, AppStatus, StoredFile, InventorySKU, ComplianceReport, PackagingTemplate } from './types';
+import { ImageState, AppStatus, StoredFile, InventorySKU, ComplianceReport, PackagingTemplate, GoogleUser } from './types';
 import { generatePackagingModification } from './services/geminiService';
 import { storageService } from './services/storageService';
 import { inventoryService } from './services/inventoryService';
 import { complianceService } from './services/complianceService';
 import { templateService } from './services/templateService';
+import { googleIntegrationService } from './services/googleIntegrationService';
 
 const App: React.FC = () => {
   // Core State
@@ -51,9 +52,15 @@ const App: React.FC = () => {
   const [complianceReport, setComplianceReport] = useState<ComplianceReport | null>(null);
   const [isScanningCompliance, setIsScanningCompliance] = useState(false);
 
-  // Load files on mount
+  // Google Integration State
+  const [user, setUser] = useState<GoogleUser | null>(null);
+
+  // Load files on mount and init Google
   useEffect(() => {
     loadFiles();
+    googleIntegrationService.initialize().then(() => {
+        console.log("Google Services Initialized");
+    });
   }, []);
 
   const loadFiles = async () => {
@@ -62,6 +69,16 @@ const App: React.FC = () => {
       setSavedFiles(files);
     } catch (e) {
       console.error("Failed to load gallery", e);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+        const loggedInUser = await googleIntegrationService.login();
+        setUser(loggedInUser);
+    } catch (e) {
+        console.error(e);
+        alert("Google Login Failed. Check console for details (likely missing CLIENT_ID).");
     }
   };
 
@@ -261,6 +278,36 @@ const App: React.FC = () => {
     }
   };
 
+  // --- Google Integrations Wrappers ---
+  const handleExportDocs = async () => {
+    if (!user) { alert("Please sign in with Google first."); return; }
+    try {
+        const url = await googleIntegrationService.createTechSheetDoc(projectName, linkedSku, complianceReport);
+        window.open(url, '_blank');
+    } catch (e) { alert("Export failed. See console."); }
+  };
+
+  const handleExportSheets = async () => {
+    if (!user) { alert("Please sign in with Google first."); return; }
+    if (!complianceReport) return;
+    try {
+        const url = await googleIntegrationService.exportComplianceToSheet(projectName, complianceReport);
+        window.open(url, '_blank');
+    } catch (e) { alert("Export failed. See console."); }
+  };
+
+  const handleEmailTeam = async () => {
+    if (!user) { alert("Please sign in with Google first."); return; }
+    const email = prompt("Enter recipient email:");
+    if (email) {
+        try {
+            const body = `Please review the attached packaging design for ${projectName}.\n\nCompliance Score: ${complianceReport?.score || 'N/A'}`;
+            await googleIntegrationService.createDraftEmail(projectName, email, body);
+            alert("Draft created in Gmail!");
+        } catch(e) { alert("Failed to create draft."); }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col font-sans">
       {/* Header */}
@@ -347,37 +394,58 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <nav className="flex items-center gap-1 bg-gray-800/50 p-1 rounded-lg border border-gray-700">
-            <button 
-              onClick={() => setActiveTab('studio')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'studio' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-              Studio
-            </button>
-            <button 
-              onClick={() => setActiveTab('compliance')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'compliance' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-              Compliance
-              {complianceReport && (
-                <span className={`w-2 h-2 rounded-full ${complianceReport.score > 85 ? 'bg-green-500' : 'bg-red-500'}`}></span>
-              )}
-            </button>
-            <button 
-              onClick={() => setActiveTab('datasheet')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'datasheet' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-               Spec Sheet
-               {complianceReport && <span className="text-[10px] bg-blue-900 text-blue-200 px-1 rounded">NEW</span>}
-            </button>
-             <button 
-              onClick={() => setActiveTab('library')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'library' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
-            >
-              Library 
-              <span className="bg-gray-800 px-1.5 rounded-full text-[10px] border border-gray-600">{savedFiles.length}</span>
-            </button>
-          </nav>
+          <div className="flex items-center gap-3">
+              <nav className="flex items-center gap-1 bg-gray-800/50 p-1 rounded-lg border border-gray-700">
+                <button 
+                  onClick={() => setActiveTab('studio')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'studio' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
+                >
+                  Studio
+                </button>
+                <button 
+                  onClick={() => setActiveTab('compliance')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'compliance' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
+                >
+                  Compliance
+                  {complianceReport && (
+                    <span className={`w-2 h-2 rounded-full ${complianceReport.score > 85 ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  )}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('datasheet')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'datasheet' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
+                >
+                  Spec Sheet
+                  {complianceReport && <span className="text-[10px] bg-blue-900 text-blue-200 px-1 rounded">NEW</span>}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('library')}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'library' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
+                >
+                  Library 
+                  <span className="bg-gray-800 px-1.5 rounded-full text-[10px] border border-gray-600">{savedFiles.length}</span>
+                </button>
+              </nav>
+
+              <div className="pl-3 border-l border-gray-700">
+                {user ? (
+                    <div className="flex items-center gap-2 bg-gray-800 rounded-full pr-3 pl-1 py-1 border border-gray-700">
+                        <img src={user.picture} alt={user.name} className="w-6 h-6 rounded-full" />
+                        <span className="text-xs font-medium text-gray-200 truncate max-w-[100px]">{user.name}</span>
+                    </div>
+                ) : (
+                    <button 
+                        onClick={handleGoogleLogin}
+                        className="flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-600 transition-colors"
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+                        </svg>
+                        Sign In
+                    </button>
+                )}
+              </div>
+          </div>
         </div>
       </header>
 
@@ -580,6 +648,8 @@ const App: React.FC = () => {
                 isScanning={isScanningCompliance}
                 onScan={handleScanCompliance}
                 hasImage={!!(resultImage || inputImage.base64)}
+                onExportSheets={handleExportSheets}
+                user={user}
               />
            </div>
         )}
@@ -593,6 +663,9 @@ const App: React.FC = () => {
               sku={linkedSku}
               projectName={projectName}
               templateDimensions={selectedTemplate?.dimensions}
+              onExportDocs={handleExportDocs}
+              onEmail={handleEmailTeam}
+              user={user}
             />
           </div>
         )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ComplianceReport, InventorySKU, StoredFile } from '../types';
+import { ComplianceReport, InventorySKU, GoogleUser } from '../types';
 import { Button } from './Button';
 
 interface TechSheetProps {
@@ -8,6 +8,9 @@ interface TechSheetProps {
   sku: InventorySKU | null;
   projectName: string;
   templateDimensions?: string;
+  onExportDocs: () => void;
+  onEmail: () => void;
+  user: GoogleUser | null;
 }
 
 export const TechSheet: React.FC<TechSheetProps> = ({ 
@@ -15,7 +18,10 @@ export const TechSheet: React.FC<TechSheetProps> = ({
   report, 
   sku, 
   projectName,
-  templateDimensions 
+  templateDimensions,
+  onExportDocs,
+  onEmail,
+  user
 }) => {
 
   const handlePrint = () => {
@@ -32,12 +38,42 @@ export const TechSheet: React.FC<TechSheetProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-4 flex justify-end print:hidden">
+      <div className="mb-4 flex justify-end gap-2 print:hidden">
+        
+        {/* Google Integration Buttons */}
+        <Button 
+            variant="outline" 
+            onClick={onExportDocs} 
+            disabled={!user}
+            title={!user ? "Sign in with Google first" : "Create Google Doc"}
+            className="flex items-center gap-2 text-blue-400 border-blue-900/50 hover:border-blue-500 hover:bg-blue-900/20"
+        >
+           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+             <path d="M14,2H6C4.9,2,4,2.9,4,4v16c0,1.1,0.9,2,2,2h12c1.1,0,2-0.9,2-2V8L14,2z M13,9V3.5L18.5,9H13z"/>
+           </svg>
+           Docs
+        </Button>
+
+        <Button 
+            variant="outline" 
+            onClick={onEmail} 
+            disabled={!user}
+            title={!user ? "Sign in with Google first" : "Email to Team"}
+            className="flex items-center gap-2 text-red-400 border-red-900/50 hover:border-red-500 hover:bg-red-900/20"
+        >
+           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+             <path d="M20,4H4C2.9,4,2,4.9,2,6v12c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V6C22,4.9,21.1,4,20,4z M20,8l-8,5L4,8V6l8,5l8-5V8z"/>
+           </svg>
+           Email
+        </Button>
+
+        <div className="w-px h-8 bg-gray-700 mx-2"></div>
+
         <Button onClick={handlePrint} variant="primary" className="flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
           </svg>
-          Print / Save PDF
+          Print PDF
         </Button>
       </div>
 
