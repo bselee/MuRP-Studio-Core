@@ -1,0 +1,5 @@
+{
+  "name": "NanoPack Studio",
+  "description": "A specialized tool using the Gemini Flash Image (Nano Banana) model to instantly modify and iterate on packaging artwork designs.",
+  "requestFramePermissions": []
+}
